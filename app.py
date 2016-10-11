@@ -1,6 +1,6 @@
 # Imports
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, session
 import hashlib,csv
 
 
@@ -26,8 +26,9 @@ def myHash(value):
 
 # Writes a key and hashed value to a given csv file
 def writeTo(csvFile,key,value):
+    print "\n\n :::DIAG::: inside writeTo \n\n"
     with open(csvFile, mode="w") as outfile:
-        outfile.write(key+","+hash(value)+"\n")
+        outfile.write(key+","+myHash(value)+"\n")
 
 # Verifies form input for three cases:
 #
@@ -37,10 +38,12 @@ def writeTo(csvFile,key,value):
 def checker(userStr,passStr):
     tempDict = dictify("data/userpass.csv")
     if(not tempDict.has_key(userStr)):
-        return addAcc("Login Failed: Username not in System")
+        return redirect(url_for("addAcc", message = "Login Failed: Username not in System"))
     elif(tempDict[userStr] == myHash(passStr)):
-        return render_template("validation.html",
-                               validated = 1)
+        session['username'] = userStr;
+        session['password'] = passStr;
+        return render_template("welcome.html",
+                               user = session['username'])
     return render_template("validation.html",
                            validated = 0)
 
@@ -61,37 +64,49 @@ def login():
 # else runs checker and returns output
 @app.route("/auth",methods=['POST']) # requires another landing page
 def authenticate():
+    
     user = request.form['username']
-    passW = request.form['password'] 
+    passW = request.form['password']
+    
     if(user != '' and passW != ''):
         return checker(user,passW)
     return app.send_static_file("emptyArgError.html")
 
 # Displays account creation form then directs to signup()
 @app.route("/addAcc")
-def addAcc(msg):
-    return render_template("addAcc.html",
-                           message = msg)
+def addAcc():
+    return render_template("addAcc.html")
 
 # Adds new user
 # Does not add new user if: any field is left blank or username is already taken
 # If not added, user is directed to account creation or emptyArgError depending on infraction
 @app.route("/signup",methods=['POST'])
 def signup():
+    
     user = request.form['username']
-    passW = request.form['password'] 
+    passW = request.form['password']
+    
     if(user != '' and passW != ''):
         tempDict = dictify("data/userpass.csv")
         if(tempDict.has_key(user)):
-            return addAcc("Sign Up Failed! Username already taken")
+            return redirect(url_for("addAcc", message = "Sign Up Failed! Username already taken"))
         writeTo("data/userpass.csv",user,passW)
         return render_template("basic.html",
                                message = "Sign Up Complete! Please Login")
     return app.send_static_file("emptyArgError.html")
 
+@app.route("/logout")
+def logout():
+
+    session.pop('username', None)
+    session.pop('password', None)
+
+    return redirect(url_for("login"));
+
 #--------------------------------------------------------------------------------------#
 
 # Flask thingie
 if(__name__ == "__main__"):
+    app.secret_key = "sjf&?:{rp(pu53p4to&3g,df"
     app.debug = True
     app.run()
