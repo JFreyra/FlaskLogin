@@ -42,8 +42,7 @@ def checker(userStr,passStr):
     elif(tempDict[userStr] == myHash(passStr)):
         session['username'] = userStr;
         session['password'] = passStr;
-        return render_template("welcome.html",
-                               user = session['username'])
+        return redirect(url_for("login"))
     return render_template("validation.html",
                            validated = 0)
 
@@ -57,6 +56,9 @@ def checker(userStr,passStr):
 # Register button -> account creation (addAcc() method)
 @app.route("/")
 def login():
+    if('username' in session):
+        return render_template("welcome.html",
+                                user = session['username'])
     return render_template("basic.html",
                            message = 'Sign Up or Log in!')
 
